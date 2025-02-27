@@ -1,0 +1,7 @@
+SECRET_KEY = 'secret'
+SUPABASE_API_KEY = 'secret'
+SUPABASE_URL = 'https://supabase.com'
+SUPABASE_PROJECT_URL = 'https://supabase.com'
+SUPABASE_SERVICE_ROLE_KEY = 'secret'
+SUPABASE_ANON_KEY = 'secret'
+SUPABASE_JWT_SECRET = 'secret'
