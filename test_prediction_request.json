@@ -1,0 +1,15 @@
+{
+  "include_predictions": true,
+  "prediction_length": 10,
+  "page": 1,
+  "page_size": 5,
+  "filters": {
+    "sensors": [
+      {"T": 1},
+      {"Up": 1},
+      {"K": 1}
+    ],
+    "time_start": "2023-01-01T00:00:00Z",
+    "time_end": "2024-01-01T00:00:00Z"
+  }
+} 

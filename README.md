@@ -1,98 +1,109 @@
-# 3D Pipe Visualization API
+# API для обработки данных датчиков деформации труб
 
-This project provides an API and frontend for visualizing a 3D pipe that can be deformed based on sensor data.
+Этот проект представляет собой серверное API для работы с данными датчиков деформации труб. API обеспечивает возможность загрузки, анализа и получения данных датчиков для последующей визуализации.
 
-## Features
+## Возможности
 
-- 3D visualization of a pipe using Three.js
-- API endpoints to get pipe model data based on sensor readings
-- Interactive controls to adjust visualization parameters
-- Real-time deformation of the pipe based on sensor data
+- Анализ CSV-файлов с данными датчиков
+- Автоматическое определение структуры данных и типов датчиков
+- Загрузка данных датчиков в базу данных
+- API для получения и фильтрации данных
+- Подготовка данных для последующей визуализации (визуализация будет разработана отдельно)
 
-## Technology Stack
+## Технологический стек
 
-- **Backend**: Flask (Python)
-- **Frontend**: HTML, JavaScript, Three.js
-- **Data Processing**: NumPy
+- **Бэкенд**: Flask (Python)
+- **База данных**: Supabase
+- **Обработка данных**: NumPy, Pandas
 
-## Setup and Installation
+## Установка и настройка
 
-1. Clone the repository
-2. Create a virtual environment:
+1. Клонировать репозиторий
+2. Создать виртуальное окружение:
    ```
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate  # На Windows: venv\Scripts\activate
    ```
-3. Install dependencies:
+3. Установить зависимости:
    ```
    pip install -r requirements.txt
    ```
-4. Run the application:
+4. Создать файл `.env` на основе `.env.example` и заполнить необходимые параметры:
+   ```
+   cp .env.example .env
+   ```
+5. Запустить приложение:
    ```
    python main.py
    ```
-5. Open your browser and navigate to `http://localhost:5000/api/pipe/`
+6. API будет доступно по адресу `http://localhost:9889/api/v1/`
 
 ## API Endpoints
 
-- `GET /api/pipe/`: Serves the 3D visualization frontend
-- `GET /api/pipe/sensor-data`: Returns sensor data for pipe deformation
-  - Query parameters:
-    - `sensors`: Number of sensors (default: 10)
-- `GET /api/pipe/pipe-model`: Returns 3D pipe model data based on sensor readings
-  - Query parameters:
-    - `sensors`: Number of sensors (default: 10)
-    - `segments`: Number of segments around the pipe circumference (default: 32)
+### Проверка работоспособности
+- `GET /api/v1/ping`: Проверка доступности сервера
 
-## How It Works
+### Работа с данными
+- `POST /api/v1/data/analyze`: Анализ CSV-файла с данными датчиков
+  - Параметры (form-data):
+    - `file`: CSV-файл с данными
+    - `separator`: Разделитель в CSV (по умолчанию: `;`)
+  - Возвращает информацию о структуре данных, типах датчиков и предлагаемое имя таблицы
 
-1. The backend generates mock sensor data (in a real application, this would come from actual sensors)
-2. The pipe model is generated based on the sensor data, creating a deformed 3D pipe
-3. The frontend fetches this model data and renders it using Three.js
-4. Users can interact with the visualization using mouse controls and UI parameters
+- `POST /api/v1/data/create_and_load`: Создание таблицы и загрузка данных из CSV
+  - Параметры (form-data):
+    - `file`: CSV-файл с данными
+    - `separator`: Разделитель в CSV (по умолчанию: `;`)
+    - `table_name`: Имя таблицы для создания
+    - `create_table`: Флаг создания таблицы (по умолчанию: `true`)
+  - Создаёт таблицу в базе данных и загружает в неё данные
 
-## Future Improvements
+### Анализ данных
+- `POST /api/v1/analyze/sensor/{table_name}`: Получение данных конкретного датчика
+  - Параметры (JSON):
+    - `filters`: Фильтры для данных
+      - `sensor_type`: Тип датчика
+      - `sensor_index`: Индекс датчика
+      - `time_start`: Начальное время
+      - `time_end`: Конечное время
+      - `value_min`: Минимальное значение
+      - `value_max`: Максимальное значение
+    - `page`: Номер страницы (по умолчанию: 1)
+    - `page_size`: Размер страницы (по умолчанию: 20)
+  - Возвращает отфильтрованные данные с пагинацией
 
-- Connect to real sensor data sources
-- Add more deformation algorithms and visualization options
-- Implement real-time updates using WebSockets
-- Add analytics and data export features
+## Принцип работы
 
-## Deployment on Render.com
+1. Бэкенд анализирует CSV-файл с данными датчиков и определяет его структуру
+2. Создаётся таблица в Supabase и данные загружаются в неё
+3. Через API можно получать данные датчиков с различными фильтрами
+4. Данные можно использовать для последующей визуализации (визуализация разрабатывается отдельно)
 
-This application is configured for easy deployment on Render.com:
+## Развёртывание на Render.com
 
-1. Create a new account or log in to your existing account on [Render.com](https://render.com)
+Данное приложение настроено для лёгкого развёртывания на платформе Render.com:
 
-2. From the Render dashboard, click on "New" and select "Blueprint" to deploy using the render.yaml configuration
+1. Создайте аккаунт или войдите в существующий на [Render.com](https://render.com)
 
-3. Connect your GitHub repository
+2. Из панели управления Render нажмите на "New" и выберите "Web Service"
 
-4. Configure the following environment variables in the Render dashboard:
-   - `SUPABASE_URL`: Your Supabase URL
-   - `SUPABASE_KEY`: Your Supabase API key
-   - `FLASK_DEBUG`: Set to `False` for production
+3. Подключите ваш репозиторий GitHub
 
-5. Deploy the application
+4. Настройте сервис со следующими параметрами:
+   - **Имя**: it4gaz-api (или ваше предпочтительное имя)
+   - **Окружение**: Python
+   - **Команда сборки**: `pip install -r requirements.txt`
+   - **Команда запуска**: `gunicorn main:app`
 
-Alternatively, you can deploy manually:
+5. Добавьте следующие переменные окружения:
+   - `SUPABASE_URL`: URL вашей базы данных Supabase
+   - `SUPABASE_KEY`: Ключ API Supabase
+   - `FLASK_DEBUG`: `False` для продакшена
 
-1. From the Render dashboard, click on "New" and select "Web Service"
+6. Нажмите "Create Web Service"
 
-2. Connect your GitHub repository
+Приложение будет развёрнуто и доступно по URL, предоставленному Render.
 
-3. Configure the service with the following settings:
-   - **Name**: it4gaz-api (or your preferred name)
-   - **Environment**: Python
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn main:app`
+## Мониторинг и логи
 
-4. Add the environment variables mentioned above
-
-5. Click "Create Web Service"
-
-The application will be deployed and available at the URL provided by Render.
-
-## Monitoring and Logs
-
-After deployment, you can monitor your application and view logs from the Render dashboard. This is useful for troubleshooting any issues that might arise in the production environment 
+После развёртывания вы можете мониторить ваше приложение и просматривать логи из панели управления Render. Это полезно для отладки любых проблем, которые могут возникнуть в продакшн-окружении. 

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Визуализация деформации трубы</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+            max-width: 100%;
+        }
+        .visualization-container {
+            flex: 7;
+            position: relative;
+        }
+        .info-panel {
+            flex: 3;
+            background-color: #fff;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+        #visualization {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        h1, h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .parameters-form {
+            margin-bottom: 20px;
+        }
+        .parameters-form label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .parameters-form input {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .parameters-form button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .parameters-form button:hover {
+            background-color: #45a049;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            border-radius: 3px;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .value-critical {
+            background-color: rgba(255, 0, 0, 0.2);
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .value-warning {
+            background-color: rgba(255, 235, 59, 0.2);
+            color: #f57f17;
+        }
+        .value-normal {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #2e7d32;
+        }
+        .deformation-scale {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .scale-bar {
+            display: flex;
+            height: 30px;
+            margin: 10px 0;
+            border-radius: 3px;
+            overflow: hidden;
+            background: linear-gradient(to right, #00ff00, #ffff00, #ff0000);
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+        }
+        .threshold-marker {
+            position: relative;
+            width: 100%;
+            height: 10px;
+        }
+        .threshold-marker::after {
+            content: '';
+            position: absolute;
+            top: -15px;
+            width: 2px;
+            height: 10px;
+            background-color: #000;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="visualization-container">
+            <canvas id="visualization"></canvas>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: rgb(0, 255, 0);"></div>
+                    <span>Нормальное состояние</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: rgb(255, 255, 0);"></div>
+                    <span>Средняя деформация</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: rgb(255, 0, 0);"></div>
+                    <span>Критическая деформация</span>
+                </div>
+            </div>
+            <div id="loading" class="loading" style="display: none;">
+                Загрузка модели...
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <h1>Визуализация деформации трубы</h1>
+            
+            <h2>Параметры трубы</h2>
+            <form id="parameters-form" class="parameters-form">
+                <label for="length">Длина трубы (м):</label>
+                <input type="number" id="length" name="length" value="10.0" min="1" step="0.1">
+                
+                <label for="radius">Радиус трубы (м):</label>
+                <input type="number" id="radius" name="radius" value="1.0" min="0.1" step="0.1">
+                
+                <label for="wall-thickness">Толщина стенки (м):</label>
+                <input type="number" id="wall-thickness" name="wall_thickness" value="0.1" min="0.01" step="0.01">
+                
+                <label for="critical-threshold">Критический порог деформации:</label>
+                <input type="number" id="critical-threshold" name="critical_threshold" value="500" min="100" step="10">
+                
+                <button type="submit">Применить</button>
+            </form>
+            
+            <div class="deformation-scale">
+                <h3>Шкала деформации</h3>
+                <div class="scale-bar"></div>
+                <div class="scale-labels">
+                    <span>0</span>
+                    <span id="threshold-value">500</span>
+                    <span id="max-value">1000</span>
+                </div>
+                <div class="threshold-marker">
+                    <div id="threshold-indicator" style="left: 50%;"></div>
+                </div>
+            </div>
+            
+            <h2>Датчики</h2>
+            <table id="sensors-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Тип</th>
+                        <th>Значение</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4">Загрузка данных...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let scene, camera, renderer, controls, pipe;
+        let isLoading = false;
+        let criticalThreshold = 500; // Критический порог по умолчанию
+        let maxSensorValue = 1000;   // Максимальное значение датчика
+        
+        // Инициализация 3D сцены
+        function initScene() {
+            // Создаем сцену
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            
+            // Настраиваем камеру
+            const container = document.getElementById('visualization');
+            const aspect = container.clientWidth / container.clientHeight;
+            camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            camera.position.set(0, 5, 15);
+            
+            // Настраиваем рендерер
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: container,
+                antialias: true 
+            });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Добавляем элементы управления камерой
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            
+            // Добавляем освещение
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+            
+            // Добавляем оси координат
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+            
+            // Запускаем цикл анимации
+            animate();
+            
+            // Обработчик изменения размера окна
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // Функция для обновления размера при изменении окна
+        function onWindowResize() {
+            const container = document.getElementById('visualization');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+        
+        // Цикл анимации
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Функция для определения статуса на основе значения и порога
+        function getSensorStatus(value) {
+            const ratio = value / criticalThreshold;
+            if (ratio >= 1.0) {
+                return 'critical';
+            } else if (ratio >= 0.8) {
+                return 'warning';
+            } else {
+                return 'normal';
+            }
+        }
+        
+        // Функция для определения цвета на основе значения
+        function getColorForValue(value) {
+            const ratio = value / criticalThreshold;
+            
+            if (ratio >= 1.0) {
+                // Красный для критических значений
+                return [1.0, 0.0, 0.0];
+            } else if (ratio >= 0.8) {
+                // Плавный переход от жёлтого к красному
+                const factor = (ratio - 0.8) / 0.2;
+                return [1.0, 1.0 * (1 - factor), 0.0];
+            } else {
+                // Плавный переход от зелёного к жёлтому
+                const factor = ratio / 0.8;
+                return [factor, 1.0, 0.0];
+            }
+        }
+        
+        // Загрузка модели трубы
+        function loadPipeModel(params = {}) {
+            if (isLoading) return;
+            
+            isLoading = true;
+            document.getElementById('loading').style.display = 'block';
+            
+            // Обновляем критический порог
+            if (params.critical_threshold) {
+                criticalThreshold = parseFloat(params.critical_threshold);
+                document.getElementById('threshold-value').textContent = criticalThreshold;
+                
+                // Обновляем индикатор порога на шкале
+                const thresholdPercent = (criticalThreshold / maxSensorValue) * 100;
+                document.getElementById('threshold-indicator').style.left = thresholdPercent + '%';
+            }
+            
+            // Удаляем старую модель, если она существует
+            if (pipe) {
+                scene.remove(pipe);
+                pipe.geometry.dispose();
+                pipe.material.dispose();
+            }
+            
+            // Формируем URL запроса с параметрами
+            const url = new URL('/api/v1/visualization/pipe-model', window.location.origin);
+            
+            // Добавляем параметры
+            Object.keys(params).forEach(key => {
+                if (params[key] !== undefined && params[key] !== null) {
+                    url.searchParams.append(key, params[key]);
+                }
+            });
+            
+            // Отправляем запрос
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status !== 'success') {
+                        throw new Error(data.message || 'Failed to load pipe model');
+                    }
+                    
+                    // Обновляем максимальное значение датчика
+                    let maxValue = 0;
+                    Object.values(data.sensor_data).forEach(value => {
+                        if (value > maxValue) maxValue = value;
+                    });
+                    maxSensorValue = Math.max(maxValue, criticalThreshold * 1.5);
+                    document.getElementById('max-value').textContent = maxSensorValue.toFixed(0);
+                    
+                    // Создаем геометрию из полученных данных
+                    const model = data.model;
+                    
+                    // Пересчитываем цвета на основе нового критического порога
+                    const colors = [];
+                    for (let i = 0; i < model.vertices.length / 3; i++) {
+                        // Используем исходные данные о нормализованных значениях и весах,
+                        // но применяем новую цветовую схему
+                        const vertex_x = model.vertices[i * 3];
+                        const vertex_y = model.vertices[i * 3 + 1];
+                        const vertex_z = model.vertices[i * 3 + 2];
+                        
+                        let totalWeight = 0;
+                        let weightedValue = 0;
+                        
+                        for (const sensor of model.sensors) {
+                            if (sensor.type === "temperature") continue;
+                            
+                            const [sensor_x, sensor_y, sensor_z] = sensor.position;
+                            const distance = Math.sqrt(
+                                Math.pow(vertex_x - sensor_x, 2) + 
+                                Math.pow(vertex_y - sensor_y, 2) + 
+                                Math.pow(vertex_z - sensor_z, 2)
+                            );
+                            
+                            const weight = 1.0 / (1.0 + Math.pow(distance, 2));
+                            totalWeight += weight;
+                            weightedValue += sensor.value * weight;
+                        }
+                        
+                        if (totalWeight > 0) {
+                            weightedValue /= totalWeight;
+                        }
+                        
+                        const color = getColorForValue(weightedValue);
+                        colors.push(...color);
+                    }
+                    
+                    const geometry = new THREE.BufferGeometry();
+                    
+                    // Устанавливаем атрибуты геометрии
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(model.vertices, 3));
+                    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(model.normals, 3));
+                    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                    
+                    // Устанавливаем индексы
+                    geometry.setIndex(model.indices);
+                    
+                    // Создаем материал с поддержкой цвета вершин
+                    const material = new THREE.MeshPhongMaterial({
+                        vertexColors: true,
+                        side: THREE.DoubleSide,
+                        shininess: 50
+                    });
+                    
+                    // Создаем меш
+                    pipe = new THREE.Mesh(geometry, material);
+                    scene.add(pipe);
+                    
+                    // Обновляем таблицу датчиков
+                    updateSensorsTable(data.sensor_data);
+                    
+                    // Настраиваем камеру для лучшего обзора модели
+                    const length = model.metadata.parameters.length;
+                    const radius = model.metadata.parameters.radius;
+                    camera.position.set(radius * 3, radius * 3, length / 2);
+                    controls.target.set(0, 0, length / 2);
+                    controls.update();
+                    
+                    isLoading = false;
+                    document.getElementById('loading').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error loading pipe model:', error);
+                    isLoading = false;
+                    document.getElementById('loading').style.display = 'none';
+                    alert('Ошибка загрузки модели: ' + error.message);
+                });
+        }
+        
+        // Обновление таблицы датчиков
+        function updateSensorsTable(sensorData) {
+            const tbody = document.querySelector('#sensors-table tbody');
+            tbody.innerHTML = '';
+            
+            Object.entries(sensorData).forEach(([id, value]) => {
+                const row = document.createElement('tr');
+                
+                // Определяем тип датчика
+                let sensorType = 'Неизвестный';
+                if (id.includes('_K_')) {
+                    sensorType = 'Кольцевая деформация';
+                } else if (id.includes('_Up_')) {
+                    sensorType = 'Верхняя часть';
+                } else if (id.includes('_R_')) {
+                    sensorType = 'Правая сторона';
+                } else if (id.includes('_L_')) {
+                    sensorType = 'Левая сторона';
+                } else if (id.startsWith('T_')) {
+                    sensorType = 'Температура';
+                }
+                
+                // Определяем статус на основе значения
+                const status = getSensorStatus(value);
+                let statusText = '';
+                let valueClass = '';
+                
+                if (status === 'critical') {
+                    statusText = 'Критический';
+                    valueClass = 'value-critical';
+                } else if (status === 'warning') {
+                    statusText = 'Предупреждение';
+                    valueClass = 'value-warning';
+                } else {
+                    statusText = 'Нормальный';
+                    valueClass = 'value-normal';
+                }
+                
+                row.innerHTML = `
+                    <td>${id}</td>
+                    <td>${sensorType}</td>
+                    <td class="${valueClass}">${parseFloat(value).toFixed(2)}</td>
+                    <td class="${valueClass}">${statusText}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Загрузка данных о датчиках
+        function loadSensorData() {
+            fetch('/api/v1/visualization/sensor-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        console.log('Sensor data loaded:', data);
+                    } else {
+                        console.error('Failed to load sensor data:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading sensor data:', error);
+                });
+        }
+        
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            // Инициализируем сцену
+            initScene();
+            
+            // Загружаем данные о датчиках
+            loadSensorData();
+            
+            // Устанавливаем значение критического порога
+            criticalThreshold = parseFloat(document.getElementById('critical-threshold').value);
+            document.getElementById('threshold-value').textContent = criticalThreshold;
+            
+            // Загружаем модель трубы с параметрами по умолчанию
+            loadPipeModel({
+                critical_threshold: criticalThreshold
+            });
+            
+            // Обработчик формы параметров
+            document.getElementById('parameters-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                const length = parseFloat(document.getElementById('length').value);
+                const radius = parseFloat(document.getElementById('radius').value);
+                const wallThickness = parseFloat(document.getElementById('wall-thickness').value);
+                const newThreshold = parseFloat(document.getElementById('critical-threshold').value);
+                
+                loadPipeModel({
+                    length: length,
+                    radius: radius,
+                    wall_thickness: wallThickness,
+                    critical_threshold: newThreshold
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
