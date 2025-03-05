@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Визуализация | IT4Gaz Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="bg-dark text-white">
+            <div class="sidebar-header">
+                <h3>IT4Gaz</h3>
+            </div>
+
+            <ul class="list-unstyled components">
+                <li>
+                    <a href="index.html">
+                        <i class="bi bi-house-door"></i> Главная
+                    </a>
+                </li>
+                <li>
+                    <a href="#analysisSubmenu" data-bs-toggle="collapse" class="dropdown-toggle">
+                        <i class="bi bi-graph-up"></i> Анализ
+                    </a>
+                    <ul class="collapse list-unstyled" id="analysisSubmenu">
+                        <li>
+                            <a href="analysis/graph.html">
+                                <i class="bi bi-graph-up-arrow"></i> График
+                            </a>
+                        </li>
+                        <li>
+                            <a href="analysis/table.html">
+                                <i class="bi bi-table"></i> Таблица
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="active">
+                    <a href="visualization.html">
+                        <i class="bi bi-bar-chart"></i> Визуализация
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Page Content -->
+        <div id="content">
+            <!-- Top Navigation -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <div class="container-fluid">
+                    <button type="button" id="sidebarCollapse" class="btn btn-dark">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="ms-auto">
+                        <button class="btn btn-outline-dark position-relative" id="notificationBtn">
+                            <i class="bi bi-bell"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                2
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <div class="container-fluid py-4">
+                <h2 class="mb-4">Визуализация данных</h2>
+
+                <div class="row">
+                    <!-- Line Chart -->
+                    <div class="col-md-8 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Тренд данных</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="lineChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pie Chart -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Распределение</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="pieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bar Chart -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Сравнение показателей</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="barChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Radar Chart -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Многомерный анализ</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Panel -->
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="notificationPanel">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title">Уведомления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+            </div>
+            <div class="offcanvas-body">
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Обновление данных</h6>
+                            <small>10:30</small>
+                        </div>
+                        <p class="mb-1">Данные успешно обновлены</p>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Новое предупреждение</h6>
+                            <small>09:15</small>
+                        </div>
+                        <p class="mb-1">Обнаружены аномалии в данных</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="js/main.js"></script>
+    <script>
+        // Line Chart
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн'],
+                datasets: [{
+                    label: 'Значения',
+                    data: [400, 300, 600, 800, 700, 900],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // Pie Chart
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Норма', 'Предупреждение', 'Ошибка'],
+                datasets: [{
+                    data: [60, 30, 10],
+                    backgroundColor: [
+                        'rgb(75, 192, 192)',
+                        'rgb(255, 205, 86)',
+                        'rgb(255, 99, 132)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // Bar Chart
+        const barCtx = document.getElementById('barChart').getContext('2d');
+        new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Показатель 1', 'Показатель 2', 'Показатель 3'],
+                datasets: [{
+                    label: 'Значения',
+                    data: [400, 600, 300],
+                    backgroundColor: 'rgb(75, 192, 192)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // Radar Chart
+        const radarCtx = document.getElementById('radarChart').getContext('2d');
+        new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Параметр 1', 'Параметр 2', 'Параметр 3', 'Параметр 4', 'Параметр 5'],
+                datasets: [{
+                    label: 'Значения',
+                    data: [80, 60, 90, 70, 85],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    pointBackgroundColor: 'rgb(75, 192, 192)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    </script>
+</body>
+</html> 

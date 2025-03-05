@@ -32,6 +32,15 @@ def analyze_csv():
         for header in headers:
             clean_header = header.split(' ')[0].strip()
             clean_header = ''.join(c for c in clean_header if c.isprintable())
+            
+            if re.match(r'T_\d+', clean_header):
+                clean_headers.append("T")
+                continue
+                
+            match = re.match(r'^T\d+_(.*)', clean_header)
+            if match:
+                clean_header = match.group(1) 
+                
             clean_headers.append(clean_header)
         
         sensor_types = {}
@@ -122,6 +131,15 @@ def create_and_load():
         for header in headers:
             clean_header = header.split(' ')[0].strip()
             clean_header = ''.join(c for c in clean_header if c.isprintable())
+            
+            if re.match(r'T_\d+', clean_header):
+                clean_headers.append("T")
+                continue
+                
+            match = re.match(r'^T\d+_(.*)', clean_header)
+            if match:
+                clean_header = match.group(1)  
+                
             clean_headers.append(clean_header)
         
         stream.seek(0)
@@ -181,6 +199,12 @@ def create_and_load():
                         "message": f"Error creating table: {result.data}"
                     }), 500
                 
+                try:
+                    supabase.table("tables").insert({"name": table_name}).execute()
+                    print(f"Successfully added table {table_name} to tables table")
+                except Exception as e:
+                    print(f"Error adding table to tables table: {str(e)}")
+                
             except Exception as e:
                 print(f"Error creating table: {str(e)}")
                 import traceback
@@ -216,39 +240,54 @@ def create_and_load():
             pipe_number = None
             sensor_number = None
             
-            if column.startswith('T_'):
-                sensor_type = "Temperature"
-                try:
-                    sensor_number = int(column.split('_')[1])
-                except:
-                    sensor_number = None
+            if column == "T":
+                sensor_type = "Температура"
+                sensor_number = None
             
             elif '_' in column:
-                match = re.match(r'T(\d+)_([A-Za-z]+)_(\d+)', column)
-                if match:
+                temp_match = re.match(r'([A-Za-z]+)_(\d+)', column)
+                if temp_match:
                     try:
-                        pipe_number = int(match.group(1))
-                        sensor_code = match.group(2)
-                        sensor_number = int(match.group(3))
+                        sensor_code = temp_match.group(1)
+                        sensor_number = int(temp_match.group(2))
                         
                         if sensor_code == 'K':
-                            sensor_type = "Ring deformation"
+                            sensor_type = "Кольцевая деформация"
                         elif sensor_code == 'L':
-                            sensor_type = "Left side"
+                            sensor_type = "Левая образующая"
                         elif sensor_code == 'R':
-                            sensor_type = "Right side"
+                            sensor_type = "Правая образующая"
                         elif sensor_code == 'Up':
-                            sensor_type = "Upper side"
+                            sensor_type = "Верхняя образующая"
                     except:
                         pass
+                else:
+                    match = re.match(r'T(\d+)_([A-Za-z]+)_(\d+)', column)
+                    if match:
+                        try:
+                            pipe_number = int(match.group(1))
+                            sensor_code = match.group(2)
+                            sensor_number = int(match.group(3))
+                            
+                            if sensor_code == 'K':
+                                sensor_type = "Кольцевая деформация"
+                            elif sensor_code == 'L':
+                                sensor_type = "Левая образующая"
+                            elif sensor_code == 'R':
+                                sensor_type = "Правая образующая"
+                            elif sensor_code == 'Up':
+                                sensor_type = "Верхняя образующая"
+                        except:
+                            pass
             
             sensor_metadata.append({
                 "sensor_code": column,
                 "pipe_number": pipe_number,
                 "sensor_type": sensor_type,
                 "sensor_number": sensor_number,
-                "description": f"{sensor_type} sensor #{sensor_number} on pipe #{pipe_number}" if pipe_number else f"{sensor_type} sensor #{sensor_number}",
-                "units": "°C" if sensor_type == "Temperature" else "mm"
+                "description": f"{sensor_type} датчик #{sensor_number} на трубе #{pipe_number}" if pipe_number else f"{sensor_type} датчик #{sensor_number}",
+                "units": "°C" if sensor_type == "Температура" else "мм",
+                "table_name": table_name
             })
         
         try:
